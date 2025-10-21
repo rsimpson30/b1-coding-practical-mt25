@@ -76,6 +76,13 @@ class Mission:
 
     @classmethod
     def from_csv(cls, file_name: str):
+        '''Load mission data from a .csv file.
+        
+        Format should be:
+        reference, cave_height, cave_depth
+        <ref1>, <height1>, <depth1>
+        <ref2>, <height2>, <depth2>
+        ...etc.'''
         data = pd.read_csv(file_name)
         reference = data.reference.to_numpy()
         cave_height = data.cave_height.to_numpy()
@@ -98,10 +105,19 @@ class ClosedLoop:
         actions = np.zeros(T)
         self.plant.reset_state()
 
+        # Store current and previous error each iteration
+        prev_error = 0
+        cur_error = 0
         for t in range(T):
+            # Take position readings
             positions[t] = self.plant.get_position()
             observation_t = self.plant.get_depth()
-            # Call your controller here
+
+            # Update error based on readings
+            prev_error = cur_error
+            cur_error = mission.reference[t] - observation_t
+            # Calculate controller action and apply the result
+            actions[t] = self.controller.get_action(cur_error, prev_error)
             self.plant.transition(actions[t], disturbances[t])
 
         return Trajectory(positions)
